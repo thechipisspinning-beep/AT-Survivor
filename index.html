@@ -110,21 +110,16 @@ const TD_TOWERS={
   tr:{name:'🚂 Thomas',cost:55,desc:'Esplosione area',range:190,cd:2.2,dmg:58}
 };
 
+var TD_SEL='zigzag';
+function tdPathDef(id){
+  if(id==='serpente')return [{x:-352,y:380},{x:-352,y:-250},{x:336,y:-250},{x:336,y:240},{x:-224,y:240},{x:-224,y:-125},{x:208,y:-125},{x:208,y:125},{x:0,y:125},{x:0,y:55}];
+  if(id==='corto')return [{x:300,y:420},{x:300,y:200},{x:-220,y:200},{x:-220,y:20},{x:-80,y:20}];
+  return [{x:0,y:480},{x:-300,y:400},{x:-300,y:160},{x:300,y:160},{x:300,y:-40},{x:-260,y:-40},{x:-260,y:-220},{x:200,y:-220},{x:200,y:-320},{x:0,y:-320},{x:0,y:-50}];
+}
+function tdSockMul(){return TD_SEL==='corto'?1.5:1}
 function initTdPath(){
   // Classic TD lane: entrance → zig-zag → house
-  tdPath=[
-    {x:0,y:480},
-    {x:-300,y:400},
-    {x:-300,y:160},
-    {x:300,y:160},
-    {x:300,y:-40},
-    {x:-260,y:-40},
-    {x:-260,y:-220},
-    {x:200,y:-220},
-    {x:200,y:-320},
-    {x:0,y:-320},
-    {x:0,y:-50}
-  ];
+  tdPath=tdPathDef(TD_SEL);
   tdPathLen=0;
   for(let i=1;i<tdPath.length;i++){
     tdPathLen+=Math.hypot(tdPath[i].x-tdPath[i-1].x,tdPath[i].y-tdPath[i-1].y);
@@ -181,11 +176,11 @@ function pathPointAt(dist){
 }
 function towerRange(tw){
   const def=TD_TOWERS[tw.type];
-  return def.range*(1+0.06*(tw.lvl-1));
+  return def.range*(1+0.06*(tw.lvl-1))*(tw.spec==='rng'?1.3:1);
 }
 function towerDmg(tw){
   const def=TD_TOWERS[tw.type];
-  return def.dmg*(1+0.22*(tw.lvl-1));
+  return def.dmg*(1+0.22*(tw.lvl-1))*(tw.spec==='pow'?1.5:1);
 }
 function towerCd(tw){
   const def=TD_TOWERS[tw.type];
@@ -226,9 +221,9 @@ onpointerdown=e=>{
   if(paused||over)return;
   if(gameMode==='td'){
     // convert screen to world (camera on house)
-    const wx=e.clientX-(W/2-house.x), wy=e.clientY-(H/2-house.y);
+    const VW=view(),wx=(e.clientX-VW.sx)/VW.z+VW.cx, wy=(e.clientY-VW.sy)/VW.z+VW.cy;
     // click existing tower → inspect / upgrade UI
-    let hitTw=null,bdTw=28*28;
+    let hitTw=null,bdTw=(Math.min(50,28/VW.z))**2;
     for(const tw of tdTowers){
       const d=(tw.x-wx)**2+(tw.y-wy)**2;
       if(d<bdTw){bdTw=d;hitTw=tw}
@@ -239,7 +234,7 @@ onpointerdown=e=>{
     }
     // if a tower type is selected, try place
     if(tdSelected){
-      let best=null,bd=55*55;
+      let best=null,bd=(Math.min(70,55/VW.z))**2;
       for(const sp of tdSpots){
         if(spotOccupied(sp.id))continue;
         const d=(sp.x-wx)**2+(sp.y-wy)**2;
@@ -388,7 +383,7 @@ function hit(e,dmg,wtype){
     D.push({x:e.x,y:e.y,k:'s'});
     if(gameMode==='td'){
       const gain=e.ty==='k'?10:(e.ty==='b'?4:2);
-      socks+=gain;
+      socks+=Math.round(gain*tdSockMul());
     }
     if(e.ty=='k'&&gameMode!=='td')xp=1e9;
     if(e.nm=='POM')D.push({x:e.x,y:e.y,k:'g'});
@@ -528,7 +523,7 @@ function updateWave(dt){
     if(waveToSpawn<=0&&alive===0){
       wavePhase='clear';
       // TD: longer build phase between waves
-      waveTimer=gameMode==='td'?3.8:1.6;
+      waveTimer=gameMode==='td'?TD_BUILD:1.6;
       const anchor=gameMode==='td'?house:P;
       floatDmg(anchor.x,anchor.y-55,gameMode==='td'?('BUILD TIME · Ondata '+wave+' ok'):('ONDATA '+wave+' SUPERATA!'),'#4cc9f0');
       if(gameMode!=='td'){
@@ -543,6 +538,7 @@ function updateWave(dt){
       if(gameMode==='wave'){
         if(SV.bestWave===undefined)SV.bestWave=0;
         if(wave>SV.bestWave){SV.bestWave=wave;sv()}
+        if(wave%3===0)RUN.mkPending=1;
       }
       if(gameMode==='td'){
         if(!SV.bestTd)SV.bestTd=0;
@@ -610,23 +606,29 @@ function openTowerMenu(tw){
     btn((canUp?'⬆ Upgrade Lv.'+(tw.lvl+1):'⬆ Upgrade')+' · '+upCost+' 🧦',()=>{
       if(upgradeTower(tw)){openTowerMenu(tw)}else{floatDmg(tw.x,tw.y-30,'Calzini insufficienti','#ff6b6b')}
     },canUp?'primary':'');
+  }else if(!tw.spec){
+    const sc=def.cost*3;
+    btn('💥 Specializza: Potenza (+50% danni) · '+sc+' 🧦',()=>{if(socks>=sc){socks-=sc;tw.spec='pow';spawnP(tw.x,tw.y,20,'#ff6b35',100,.5,'spark');openTowerMenu(tw)}},socks>=sc?'primary':'');
+    btn('🎯 Specializza: Precisione (+30% raggio, rallenta) · '+sc+' 🧦',()=>{if(socks>=sc){socks-=sc;tw.spec='rng';spawnP(tw.x,tw.y,20,'#4cc9f0',100,.5,'spark');openTowerMenu(tw)}},socks>=sc?'primary':'');
   }else{
-    btn('⭐ Livello massimo',()=>{});
+    btn('⭐ Livello massimo · '+(tw.spec==='pow'?'💥 Potenza':'🎯 Precisione'),()=>{});
   }
+  const TG={first:'il più avanti',strong:'il più forte',near:'il più vicino'},nxt={first:'strong',strong:'near',near:'first'};
+  btn('🎯 Bersaglio: '+TG[tw.tg||'first']+' (tocca per cambiare)',()=>{tw.tg=nxt[tw.tg||'first'];openTowerMenu(tw)});
   btn('💰 Vendi · +'+sell+' 🧦',()=>{sellTower(tw);paused=false;ov.style.display='none';showTdBar()});
   btn('⬅ Chiudi',()=>{tdInspect=null;paused=false;ov.style.display='none';showTdBar()},'primary');
   ov.style.display='flex';
 }
 // Targeting priority: FIRST on the path (most advanced), classic TD style
-function pickTdTarget(x,y,range){
-  let best=null,bestProg=-1;
+function pickTdTarget(x,y,range,mode){
+  let best=null,bestV=-Infinity;
   const r2=range*range;
   for(const e of E){
     if(e.dead||e.ty==='t')continue;
     const d=(e.x-x)**2+(e.y-y)**2;
     if(d>r2)continue;
-    const prog=e.pathProg||0;
-    if(prog>bestProg){bestProg=prog;best=e}
+    const v=mode==='strong'?e.hp:mode==='near'?-d:(e.pathProg||0);
+    if(v>bestV){bestV=v;best=e}
   }
   return best;
 }
@@ -639,9 +641,10 @@ function updateTowers(dt){
     tw.ang=(tw.ang||0)+dt*(2.2+tw.lvl*0.15);
     if(tw.cd>0)continue;
     const rng=towerRange(tw);
-    const tg=pickTdTarget(tw.x,tw.y,rng);
+    const tg=pickTdTarget(tw.x,tw.y,rng,tw.tg);
     if(!tg)continue;
     tw.cd=towerCd(tw);
+    if(tw.spec==='rng')tg.sl=Math.max(tg.sl||0,1.2);
     const dmg=towerDmg(tw);
     if(tw.type==='sock'){
       const a=Math.atan2(tg.y-tw.y,tg.x-tw.x);
@@ -1163,7 +1166,7 @@ function update(dt){
   }
 
   runTick(dt);
-  if(gameMode!=='td'&&xp>=need)levelUp();
+  if(gameMode!=='td'&&xp>=need&&!paused)levelUp();
   if(P.hp<=0){
     over=true;bankCheese();
     if(gameMode==='classic')SV.best=Math.max(SV.best,t|0);
@@ -1346,6 +1349,7 @@ const Ads={
 function btn(txt,fn,cls=''){const b=document.createElement('button');b.className='b '+(cls||'');b.innerHTML=txt;b.onclick=fn;ov.appendChild(b)}
 function startRun(mode){
   gameMode=(mode==='wave'||mode==='td')?mode:'classic';
+  TD_SEL=SV.tdmap||'zigzag';
   init();
   newRun();P.mh=100*(1+.1*SV.up.hp)*(hasFullSet()?1.5:1)*CH().hp;P.hp=P.mh;
   document.getElementById('joystick-hint').style.display='none';
@@ -1357,6 +1361,7 @@ function startRun(mode){
     socks=40; // starting currency
     house.hp=house.mh=500*(1+.08*SV.up.hp);
     P.x=0;P.y=40; // stand near the house
+    wp[CH().w]=1;RUN.speed=1;
     beginWave(1);
     floatDmg(0,-80,'Difendi la casa di Andrea!','#ffd23f');
     showTdBar();
@@ -1376,7 +1381,7 @@ function menu(){
     (SV.limiterOff?'<p style="color:#4cc9f0">🔓 Limitatore armi rimosso (max 100)</p>':'');
   btn('▶  Classica (sopravvivenza)',()=>prepRun('classic'),'primary');
   btn('🌊  Modalità Ondate',()=>prepRun('wave'));
-  btn('🏰  Tower Defense — Casa di Andrea',()=>startRun('td'));
+  btn('🏰  Tower Defense — Casa di Andrea',()=>prepRun('td'));
   btn('🧀  Negozio',shop);
   btn('📦  Salvataggi (export/import)',saveMenu);
   ov.style.display='flex';
@@ -2291,14 +2296,14 @@ function draw() {
   if (!paused && frameMs < 250) { QUAL.slow = frameMs > 28 ? QUAL.slow + frameMs / 1000 : Math.max(0, QUAL.slow - frameMs / 2000); if (QUAL.slow > 3) QUAL.low = true; }
   let shakeX = 0, shakeY = 0;
   if (camShake > 0) { shakeX = (Math.random() - .5) * 12 * camShake; shakeY = (Math.random() - .5) * 12 * camShake; }
-  const camX = gameMode === 'td' ? house.x : P.x, camY = gameMode === 'td' ? house.y : P.y;
-  const ox = W / 2 - camX + shakeX, oy = H / 2 - camY + shakeY;
+  const VW = view(), Z = VW.z, camX = VW.cx, camY = VW.cy, SCX = VW.sx + shakeX, SCY = VW.sy + shakeY;
+  const TDK = gameMode === 'td' ? Math.min(1.6, 1 / Math.sqrt(Z)) : 1; // nel TD rimpicciolito, piazzole e torri restano leggibili
   lightList = [];
   ctx.fillStyle = '#0b0712'; ctx.fillRect(0, 0, W, H);
-  ctx.save(); ctx.translate(ox, oy);
+  ctx.save(); ctx.translate(SCX, SCY); if (Z !== 1) ctx.scale(Z, Z); ctx.translate(-camX, -camY);
 
   // --- pavimento a blocchi ---
-  const vx0 = camX - W / 2 - 40, vy0 = camY - H / 2 - 40, vx1 = camX + W / 2 + 40, vy1 = camY + H / 2 + 40;
+  const vx0 = camX - SCX / Z - 40, vy0 = camY - SCY / Z - 40, vx1 = camX + (W - SCX) / Z + 40, vy1 = camY + (H - SCY) / Z + 40;
   const glowProps = [];
   for (let cy = Math.floor(vy0 / CHUNK); cy <= Math.floor(vy1 / CHUNK); cy++) for (let cx = Math.floor(vx0 / CHUNK); cx <= Math.floor(vx1 / CHUNK); cx++) {
     const ch = getChunk(cx, cy);
@@ -2329,18 +2334,20 @@ function draw() {
   }
   if (gameMode === 'td') {
     drawShadow(house.x, house.y + 16, 42, 12);
-    drawSpr(houseSprite(), house.x, house.y);
+    drawSpr(houseSprite(), house.x, house.y, TDK, TDK);
     for (const wx of [-21, 23]) { glow(house.x + wx, house.y - 14, 26, 'rgba(255,200,80,.55)', 0.85 + 0.15 * Math.sin(t * 3 + wx)); }
     addLight(house.x, house.y - 10, 170, 1);
     for (let i = 0; i < 3; i++) { const ph = (t * 0.5 + i / 3) % 1; ctx.fillStyle = `rgba(180,170,200,${0.35 * (1 - ph)})`; ctx.beginPath(); ctx.arc(house.x + 21 + Math.sin(ph * 6 + i) * 5, house.y - 60 - ph * 40, 5 + ph * 9, 0, 6.28); ctx.fill(); }
-    ctx.font = '12px ' + FONT; ctx.textAlign = 'center'; ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.strokeText('CASA DI ANDREA', house.x, house.y - 72); ctx.fillStyle = '#ffd23f'; ctx.fillText('CASA DI ANDREA', house.x, house.y - 72);
+    ctx.font = Math.round(12 * TDK) + 'px ' + FONT; ctx.textAlign = 'center'; ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.strokeText('CASA DI ' + CH().name.toUpperCase(), house.x, house.y - 72 * TDK); ctx.fillStyle = '#ffd23f'; ctx.fillText('CASA DI ' + CH().name.toUpperCase(), house.x, house.y - 72 * TDK);
     hpBar(house.x, house.y + 32, 84, Math.max(0, house.hp / house.mh), house.hp / house.mh > 0.35 ? '#4cc9f0' : '#e63946');
     for (const sp of tdSpots) {
       const occ = spotOccupied(sp.id); if (occ) continue;
+      ctx.save(); ctx.translate(sp.x, sp.y); ctx.scale(TDK, TDK); ctx.translate(-sp.x, -sp.y);
       ctx.fillStyle = 'rgba(10,6,18,.5)'; ctx.beginPath(); ctx.ellipse(sp.x, sp.y + 2, 19, 11, 0, 0, 6.28); ctx.fill();
       ctx.strokeStyle = tdSelected ? `rgba(76,201,240,${0.6 + 0.3 * Math.sin(t * 6)})` : 'rgba(255,255,255,.3)'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
       ctx.beginPath(); ctx.ellipse(sp.x, sp.y, 18, 10.5, 0, 0, 6.28); ctx.stroke(); ctx.setLineDash([]);
       ctx.strokeStyle = tdSelected ? '#4cc9f0' : 'rgba(255,255,255,.45)'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(sp.x - 5, sp.y); ctx.lineTo(sp.x + 5, sp.y); ctx.moveTo(sp.x, sp.y - 5); ctx.lineTo(sp.x, sp.y + 5); ctx.stroke();
+      ctx.restore();
       if (tdSelected && TD_TOWERS[tdSelected]) { ctx.strokeStyle = 'rgba(76,201,240,.12)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(sp.x, sp.y, TD_TOWERS[tdSelected].range, 0, 6.28); ctx.stroke(); }
     }
     const towers = [...tdTowers].sort((a, b) => a.y - b.y);
@@ -2349,10 +2356,11 @@ function draw() {
       if (tw.type === 'cheese') glow(tw.x, tw.y, rng, 'rgba(255,210,63,.18)');
       drawShadow(tw.x, tw.y + 8, 18, 6);
       glow(tw.x, tw.y - 18, 30, TOWER_GLOW[tw.type] || 'rgba(255,255,255,.3)', 0.7);
-      const sc = 1 + (tw.lvl - 1) * 0.05;
+      const sc = (1 + (tw.lvl - 1) * 0.05) * TDK;
       drawSpr(towerSprite(tw.type, tw.lvl), tw.x, tw.y + Math.sin(t * 2 + tw.x) * 0.6, sc, sc);
       for (let i = 0; i < tw.lvl; i++) { const px = tw.x - (tw.lvl - 1) * 3.5 + i * 7; ctx.fillStyle = INK; ctx.beginPath(); ctx.arc(px, tw.y + 21, 3.2, 0, 6.28); ctx.fill(); ctx.fillStyle = tw.lvl >= TD_MAX_LVL ? '#c77dff' : '#ffd23f'; ctx.beginPath(); ctx.arc(px, tw.y + 21, 2.1, 0, 6.28); ctx.fill(); }
       addLight(tw.x, tw.y - 10, 70, 0.5);
+      if (tw.spec) { ctx.font = '15px serif'; ctx.textAlign = 'center'; ctx.fillText(tw.spec === 'pow' ? '💥' : '🎯', tw.x + 17, tw.y - 28); }
       if (tdSelected === tw.type || tdInspect === tw) { ctx.strokeStyle = 'rgba(255,210,63,.45)'; ctx.lineWidth = 2; ctx.setLineDash([10, 8]); ctx.beginPath(); ctx.arc(tw.x, tw.y, rng, 0, 6.28); ctx.stroke(); ctx.setLineDash([]); }
       if (tw.type === 'melon') { const orbs = 3 + Math.floor((tw.lvl - 1) / 2); for (let i = 0; i < orbs; i++) { const a = tw.ang + i * (6.28 / orbs); drawMelon(tw.x + Math.cos(a) * (60 + tw.lvl * 6), tw.y + Math.sin(a) * (60 + tw.lvl * 6), false); } }
     }
@@ -2508,7 +2516,7 @@ function draw() {
   LG.globalCompositeOperation = 'source-over'; LG.clearRect(0, 0, LM.width, LM.height); LG.fillStyle = gameMode === 'td' ? 'rgba(6,3,16,.4)' : mapInfo().dark; LG.fillRect(0, 0, LM.width, LM.height);
   LG.globalCompositeOperation = 'destination-out';
   for (let i = 0; i < lightList.length; i += 4) {
-    const sx = (lightList[i] + ox) * LS, sy = (lightList[i + 1] + oy) * LS, r = lightList[i + 2] * LS;
+    const sx = ((lightList[i] - camX) * Z + SCX) * LS, sy = ((lightList[i + 1] - camY) * Z + SCY) * LS, r = lightList[i + 2] * LS * Z;
     if (sx < -r || sy < -r || sx > LM.width + r || sy > LM.height + r) continue;
     LG.globalAlpha = Math.min(1, lightList[i + 3]); LG.drawImage(LIGHT, sx - r, sy - r, r * 2, r * 2);
   }
@@ -2517,12 +2525,13 @@ function draw() {
   }
 
   // --- numeri del danno (sopra il buio, sempre leggibili) ---
-  ctx.save(); ctx.translate(ox, oy); ctx.textAlign = 'center'; ctx.lineJoin = 'round';
+  ctx.save(); ctx.translate(SCX, SCY); ctx.textAlign = 'center'; ctx.lineJoin = 'round';
   for (const f of floatTexts) {
     const age = 0.95 - f.life, pop = age < 0.12 ? 0.6 + age / 0.12 * 0.65 : 1.25 - Math.min(0.25, (age - 0.12) * 1.2);
     ctx.globalAlpha = Math.min(1, f.life * 1.8);
     ctx.font = Math.round(16 * (f.scale || 1) * pop) + 'px ' + FONT;
-    ctx.lineWidth = 5; ctx.strokeStyle = INK; ctx.strokeText(f.txt, f.x, f.y); ctx.fillStyle = f.col; ctx.fillText(f.txt, f.x, f.y);
+    const fx = (f.x - camX) * Z, fy = (f.y - camY) * Z;
+    ctx.lineWidth = 5; ctx.strokeStyle = INK; ctx.strokeText(f.txt, fx, fy); ctx.fillStyle = f.col; ctx.fillText(f.txt, fx, fy);
   }
   ctx.globalAlpha = 1; ctx.restore();
 
@@ -2551,7 +2560,7 @@ function draw() {
   if (hurtFlash > 0) { ctx.fillStyle = 'rgba(220,30,50,' + (hurtFlash * 0.45) + ')'; ctx.fillRect(0, 0, W, H); }
 
   if ((gameMode === 'wave' || gameMode === 'td') && (wavePhase === 'announce' || (gameMode === 'td' && wavePhase === 'clear')) && waveTimer > 0) {
-    const maxT = wavePhase === 'clear' ? 3.8 : 2.4, a = Math.min(1, waveTimer * 1.2, (maxT - waveTimer) * 2);
+    const maxT = wavePhase === 'clear' ? TD_BUILD : 2.4, a = Math.min(1, waveTimer * 1.2, (maxT - waveTimer) * 2);
     ctx.globalAlpha = Math.max(0, a);
     const bandY = H * 0.33, bh = H * 0.15;
     ctx.fillStyle = lgrad(ctx, 0, 0, W, 0, [[0, 'rgba(10,5,20,0)'], [.2, 'rgba(10,5,20,.75)'], [.8, 'rgba(10,5,20,.75)'], [1, 'rgba(10,5,20,0)']]); ctx.fillRect(0, bandY, W, bh);
@@ -3480,6 +3489,113 @@ PREP_EXTRA.push(mode=>{
   ov.appendChild(row);ov.appendChild(d);
 });
 
+
+// =====================================================================
+// MODALITÀ: vittoria in Classica, mercatino nelle Ondate, Tower Defense migliorato
+// =====================================================================
+const TD_BUILD=8;
+const TD_MAPS={
+  zigzag:{name:'〰️ Zig-zag',desc:'Il percorso classico.'},
+  serpente:{name:'🐍 Serpente',desc:'Strada lunghissima: più tempo per colpire, ma servono più torri.'},
+  corto:{name:'⚡ Scorciatoia',desc:'Strada cortissima e pericolosa, ma calzini ×1,5.'},
+};
+UNLOCK_NAMES['td:serpente']='il percorso Serpente';
+UNLOCK_NAMES['td:corto']='il percorso Scorciatoia';
+// telecamera: segue il personaggio; nel TD inquadra tutto il percorso
+const VIEWC={key:'',v:null};
+function view(){
+  if(gameMode!=='td')return {cx:P.x,cy:P.y,z:1,sx:W/2,sy:H/2};
+  const bar=document.getElementById('tdbar'),bh=bar&&bar.style.display!=='none'?bar.offsetHeight:0;
+  const key=W+'x'+H+':'+bh+':'+TD_SEL;
+  if(VIEWC.key===key)return VIEWC.v;
+  let x0=house.x-90,x1=house.x+90,y0=house.y-110,y1=house.y+60;
+  for(const p of tdPath.concat(tdSpots)){x0=Math.min(x0,p.x-40);x1=Math.max(x1,p.x+40);y0=Math.min(y0,p.y-40);y1=Math.max(y1,p.y+40)}
+  const top=84,availH=Math.max(200,H-top-bh-8);
+  const z=Math.min(1,W/(x1-x0),availH/(y1-y0));
+  VIEWC.key=key;VIEWC.v={cx:(x0+x1)/2,cy:(y0+y1)/2,z,sx:W/2,sy:top+availH/2};
+  return VIEWC.v;
+}
+RUN_TICKS.push(dt=>{
+  if(!RUN.active)return;
+  // Classica: vittoria a 30 minuti
+  if(gameMode==='classic'&&!RUN.won&&t>=1800){RUN.won=1;SV.st.wins++;victoryUI();return}
+  if(RUN.mkPending&&!paused){RUN.mkPending=0;openMarket();return}
+  if(gameMode==='td'){
+    // l'eroe resta nella zona inquadrata
+    const v=view(),hw=(W/2-20)/v.z,hh=(H/2-60)/v.z;
+    P.x=Math.max(v.cx-hw,Math.min(v.cx+hw,P.x));P.y=Math.max(v.cy-hh,Math.min(v.cy+hh,P.y));
+    // l'arma dell'eroe cresce ogni 5 ondate
+    const w=CH().w,lvT=Math.min(5,1+Math.floor((wave-1)/5));
+    if(wp[w]<lvT){wp[w]=lvT;floatDmg(P.x,P.y-60,CH().name+' sale di livello! '+NAMES[w].split(' ')[0]+' Lv.'+lvT,'#4cc9f0')}
+    if(RUN.lastPhase!==wavePhase){RUN.lastPhase=wavePhase;showTdBar()}
+  }
+});
+function victoryUI(){
+  paused=true;joy=null;
+  const bonus=100;SV.ch+=bonus;checkMissions(true);sv();
+  try{sfx('victory')}catch(e){}
+  ov.innerHTML='<h1>🏆 Vittoria!</h1><p style="font-size:1.15rem">'+CH().name+' è sopravvissuto <b>30 minuti</b>!</p><p>Premio: <b>+'+bonus+' 🧀</b></p><p style="opacity:.8;font-size:13px">Puoi continuare all’infinito per battere il tuo record.</p>';
+  btn('♾ Continua (modalità infinita)',()=>{ov.style.display='none';paused=false},'primary');
+  btn('🏠 Termina e torna al menu',()=>{bankCheese();menu()});
+  ov.style.display='flex';
+}
+// Ondate: mercatino ogni 3 ondate, si paga con i calzini raccolti
+function openMarket(){
+  paused=true;joy=null;
+  RUN.mk=RUN.mk||{up:0};
+  const k=1+wave/10,price=b=>Math.round(b*k);
+  const items=[
+    ['❤️ Cura completa',price(8),()=>{P.hp=P.mh}],
+    ['⬆️ Potenzia un’arma a caso',price(20)+RUN.mk.up*5,()=>{const own=Object.keys(wp).filter(x=>wp[x]>0&&wp[x]<maxWeaponLvl());if(!own.length)return false;const w=own[Math.random()*own.length|0];wp[w]++;RUN.mk.up++;floatDmg(P.x,P.y-60,NAMES[w]+' Lv.'+wp[w],'#4cc9f0')}],
+    ['💪 +10% danni per questa partita',price(25),()=>{RUN.dmgBuff+=.1}],
+    ['🎲 +1 Rilancio',price(12),()=>{RUN.rerolls++}],
+    ['⭐ Level-up subito',price(30),'lvl'],
+  ];
+  const render=()=>{
+    ov.innerHTML='<h2>🛒 Mercatino</h2><p>Ondata '+wave+' superata! Hai <b>🧦 '+socks+'</b> calzini</p>';
+    for(const [n,c,fn] of items){
+      btn(n+' · '+c+' 🧦',()=>{
+        if(socks<c)return;
+        if(fn==='lvl'){socks-=c;ov.style.display='none';paused=false;levelUp();return}
+        if(fn()===false)return;socks-=c;render();
+      },socks>=c?'':'');
+      if(socks<c)ov.lastChild.style.opacity=.45;
+    }
+    btn('▶ Prossima ondata',()=>{ov.style.display='none';paused=false},'primary');
+    ov.style.display='flex';
+  };
+  render();
+}
+// barra del TD: velocità e "chiama ondata"
+(function(){
+  const _show=showTdBar;
+  showTdBar=function(){
+    _show.apply(this,arguments);
+    const bar=document.getElementById('tdbar');if(!bar||gameMode!=='td')return;
+    const mk=(txt,fn,on)=>{const b=document.createElement('button');b.textContent=txt;
+      b.style.cssText='background:'+(on?'#3d2e55':'#1a1229')+';color:#fff;border:2px solid '+(on?'#ffd23f':'#ffffff55')+';border-radius:10px;padding:6px 8px;font-size:12px;font-weight:700;line-height:1.2;white-space:pre;min-width:56px';
+      b.onclick=ev=>{ev.stopPropagation();sfx('click');fn();showTdBar()};bar.appendChild(b)};
+    mk(RUN.speed===2?'⏩\nx2':'▶\nx1',()=>{RUN.speed=RUN.speed===2?1:2},RUN.speed===2);
+    if(wavePhase==='clear'){const bonus=5+wave;mk('⏭ Ondata\n+'+bonus+'🧦',()=>{if(wavePhase==='clear'){socks+=bonus;waveTimer=0}},true)}
+  };
+})();
+// preparazione TD: scelta del percorso
+PREP_EXTRA.push(mode=>{
+  if(mode!=='td')return;
+  const p=document.createElement('p');p.style.cssText='font-size:13px;margin-top:4px';p.textContent='Percorso (il personaggio scelto aiuta le torri con la sua arma)';ov.appendChild(p);
+  const row=document.createElement('div');row.style.cssText='display:flex;gap:6px;flex-wrap:wrap;justify-content:center;width:min(360px,94%)';
+  const d=document.createElement('p');d.style.cssText='font-size:12px;opacity:.8';d.textContent=TD_MAPS[SV.tdmap].desc;
+  for(const id of Object.keys(TD_MAPS)){
+    const own=SV.tdmaps[id],sel=SV.tdmap===id,b=document.createElement('button');b.className='b';
+    b.style.cssText='width:auto;padding:6px 10px;font-size:14px;text-align:center'+(sel?';border-color:#ffd23f;background:linear-gradient(180deg,#ffcf4a,#ff8a1c);color:#3a1a00;text-shadow:none':'')+(own?'':';opacity:.5');
+    const m=MISSIONS.find(m=>m.un==='td:'+id);
+    b.innerHTML=(own?'':'🔒 ')+TD_MAPS[id].name;
+    b.onclick=()=>{sfx('click');if(own){SV.tdmap=id;sv();prepRun(mode)}else d.textContent='🔒 Si sblocca con la missione: '+(m?m.txt:'')};
+    row.appendChild(b);
+  }
+  ov.appendChild(row);ov.appendChild(d);
+});
+
 // Pausa automatica quando l'app/scheda va in background (telefonata, cambio app, blocco schermo)
 function inRunUnpaused(){return !paused&&!over&&ov.style.display==='none'}
 function onBackground(){
@@ -3504,7 +3620,7 @@ Ads.init();
 let last=performance.now();
 (function loop(n){
   const dt=Math.min(.05,(n-last)/1000);last=n;
-  if(!paused&&!over)update(dt);
+  if(!paused&&!over){update(dt);if(gameMode==='td'&&RUN.speed===2&&!paused&&!over)update(dt)}
   draw();
   requestAnimationFrame(loop);
 })(last);
