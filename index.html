@@ -46,7 +46,9 @@ html,body{background:#0b0712}
 #cur{background:var(--panel)!important;border:2px solid rgba(255,255,255,.08);border-radius:12px!important;padding:2px 10px!important;text-shadow:0 2px 0 var(--ink)}
 #pb{top:calc(env(safe-area-inset-top,0px) + 40px);right:10px;background:var(--panel);border:2px solid rgba(255,255,255,.12);border-radius:12px;padding:4px 12px;font-size:16px;box-shadow:0 3px 0 rgba(0,0,0,.45)}
 /* menu e schermate */
-#ov{background:radial-gradient(ellipse at 50% 30%,rgba(60,25,90,.92),rgba(8,4,16,.96) 70%);gap:12px}
+#ov{background:radial-gradient(ellipse at 50% 30%,rgba(60,25,90,.92),rgba(8,4,16,.96) 70%);gap:12px;justify-content:flex-start;padding-top:calc(env(safe-area-inset-top,0px) + 20px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 20px)}
+#ov>:first-child{margin-top:auto}#ov>:last-child{margin-bottom:auto}#ov>*{flex-shrink:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:min(340px,92%)}.grid2 .b{width:100%;padding:10px 8px;font-size:14px;text-align:center}
 #ov h1{font-family:var(--display);font-weight:400;font-size:clamp(2.4rem,11vw,3.6rem);line-height:1;color:#ffd23f;letter-spacing:.02em;
   text-shadow:0 4px 0 #b3570a,0 7px 0 var(--ink),0 0 34px rgba(255,190,60,.45);transform:rotate(-3deg);margin-bottom:10px}
 #ov h2{font-family:var(--display);font-weight:400;font-size:1.7rem;color:#ffd23f;text-shadow:0 3px 0 var(--ink),0 0 20px rgba(255,190,60,.35)}
@@ -1363,7 +1365,7 @@ function startRun(mode){
     P.x=0;P.y=40; // stand near the house
     wp[CH().w]=1;RUN.speed=1;
     beginWave(1);
-    floatDmg(0,-80,'Difendi la casa di Andrea!','#ffd23f');
+    floatDmg(0,-80,'Difendi la tua casa!','#ffd23f');
     showTdBar();
   }else{
     hideTdBar();
@@ -1381,7 +1383,7 @@ function menu(){
     (SV.limiterOff?'<p style="color:#4cc9f0">🔓 Limitatore armi rimosso (max 100)</p>':'');
   btn('▶  Classica (sopravvivenza)',()=>prepRun('classic'),'primary');
   btn('🌊  Modalità Ondate',()=>prepRun('wave'));
-  btn('🏰  Tower Defense — Casa di Andrea',()=>prepRun('td'));
+  btn('🏰  Tower Defense — Difendi la casa',()=>prepRun('td'));
   btn('🧀  Negozio',shop);
   btn('📦  Salvataggi (export/import)',saveMenu);
   ov.style.display='flex';
@@ -1578,7 +1580,7 @@ function showTdBar(){
   if(!bar){
     bar=document.createElement('div');
     bar.id='tdbar';
-    bar.style.cssText='position:fixed;left:0;right:0;bottom:env(safe-area-inset-bottom,8px);display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:8px;z-index:25;pointer-events:auto';
+    bar.style.cssText='position:fixed;left:0;right:0;bottom:env(safe-area-inset-bottom,8px);display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:8px;z-index:19;pointer-events:auto';
     document.body.appendChild(bar);
   }
   bar.style.display='flex';
@@ -1911,6 +1913,7 @@ function skelPainter(frame) {
 }
 function hpBar(x, y, w, frac, col = '#e63946', name = null, sub = null) {
   ctx.save(); ctx.translate(x, y);
+  name = name && tr(name); sub = sub && tr(sub);
   if (name) { ctx.font = 'bold 13px ' + FONT; ctx.textAlign = 'center'; ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.strokeText(name, 0, -8); ctx.fillStyle = '#fff'; ctx.fillText(name, 0, -8); }
   if (sub) { ctx.font = '10px ' + FONT; ctx.fillStyle = '#c9b8e8'; ctx.textAlign = 'center'; ctx.fillText(sub, 0, -22); }
   ctx.fillStyle = INK; ctx.beginPath(); ctx.roundRect(-w / 2 - 2, -2, w + 4, 9, 4); ctx.fill();
@@ -2294,6 +2297,7 @@ const QUAL = { last: 0, slow: 0, low: false };
 function draw() {
   const nowMs = performance.now(), frameMs = QUAL.last ? nowMs - QUAL.last : 16; QUAL.last = nowMs;
   if (!paused && frameMs < 250) { QUAL.slow = frameMs > 28 ? QUAL.slow + frameMs / 1000 : Math.max(0, QUAL.slow - frameMs / 2000); if (QUAL.slow > 3) QUAL.low = true; }
+  if (SV.opt.q === 'high') QUAL.low = false; else if (SV.opt.q === 'low') QUAL.low = true;
   let shakeX = 0, shakeY = 0;
   if (camShake > 0) { shakeX = (Math.random() - .5) * 12 * camShake; shakeY = (Math.random() - .5) * 12 * camShake; }
   const VW = view(), Z = VW.z, camX = VW.cx, camY = VW.cy, SCX = VW.sx + shakeX, SCY = VW.sy + shakeY;
@@ -2338,7 +2342,7 @@ function draw() {
     for (const wx of [-21, 23]) { glow(house.x + wx, house.y - 14, 26, 'rgba(255,200,80,.55)', 0.85 + 0.15 * Math.sin(t * 3 + wx)); }
     addLight(house.x, house.y - 10, 170, 1);
     for (let i = 0; i < 3; i++) { const ph = (t * 0.5 + i / 3) % 1; ctx.fillStyle = `rgba(180,170,200,${0.35 * (1 - ph)})`; ctx.beginPath(); ctx.arc(house.x + 21 + Math.sin(ph * 6 + i) * 5, house.y - 60 - ph * 40, 5 + ph * 9, 0, 6.28); ctx.fill(); }
-    ctx.font = Math.round(12 * TDK) + 'px ' + FONT; ctx.textAlign = 'center'; ctx.lineWidth = 4; ctx.strokeStyle = INK; ctx.strokeText('CASA DI ' + CH().name.toUpperCase(), house.x, house.y - 72 * TDK); ctx.fillStyle = '#ffd23f'; ctx.fillText('CASA DI ' + CH().name.toUpperCase(), house.x, house.y - 72 * TDK);
+    ctx.font = Math.round(12 * TDK) + 'px ' + FONT; ctx.textAlign = 'center'; ctx.lineWidth = 4; ctx.strokeStyle = INK; const hl = tr('CASA DI ') + CH().name.toUpperCase(); ctx.strokeText(hl, house.x, house.y - 72 * TDK); ctx.fillStyle = '#ffd23f'; ctx.fillText(hl, house.x, house.y - 72 * TDK);
     hpBar(house.x, house.y + 32, 84, Math.max(0, house.hp / house.mh), house.hp / house.mh > 0.35 ? '#4cc9f0' : '#e63946');
     for (const sp of tdSpots) {
       const occ = spotOccupied(sp.id); if (occ) continue;
@@ -2551,6 +2555,7 @@ function draw() {
   }
 
   const banner = (txt, col, sub, y) => {
+    txt = tr(txt); sub = sub && tr(sub);
     ctx.textAlign = 'center'; ctx.lineJoin = 'round';
     ctx.font = Math.min(34, W / 13) + 'px ' + FONT; ctx.lineWidth = 7; ctx.strokeStyle = INK; ctx.strokeText(txt, W / 2, y); ctx.fillStyle = col; ctx.fillText(txt, W / 2, y);
     if (sub) { ctx.font = Math.min(17, W / 24) + 'px ' + FONT; ctx.lineWidth = 4; ctx.strokeText(sub, W / 2, y + 28); ctx.fillStyle = '#fff'; ctx.fillText(sub, W / 2, y + 28); }
@@ -2608,9 +2613,9 @@ function auInit(){
   try{
     const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
     AU.ctx=new C();
-    AU.mg=AU.ctx.createGain();AU.mg.gain.value=.16;AU.mg.connect(AU.ctx.destination);
-    AU.sg=AU.ctx.createGain();AU.sg.gain.value=.55;AU.sg.connect(AU.ctx.destination);
-    AU.cg=AU.ctx.createGain();AU.cg.gain.value=.9;AU.cg.connect(AU.ctx.destination);
+    AU.mg=AU.ctx.createGain();AU.mg.gain.value=.16*SV.opt.mus;AU.mg.connect(AU.ctx.destination);
+    AU.sg=AU.ctx.createGain();AU.sg.gain.value=.55*SV.opt.sfx;AU.sg.connect(AU.ctx.destination);
+    AU.cg=AU.ctx.createGain();AU.cg.gain.value=.9*SV.opt.sfx;AU.cg.connect(AU.ctx.destination);
     startMusic();loadCustom();
   }catch(e){}
 }
@@ -2708,7 +2713,7 @@ addEventListener('keydown',auInit);
     if(AU.ws)for(const k in wp){if(wp[k]===4&&AU.ws[k]===3)sfx2('evo_'+k);else if(wp[k]===5&&AU.ws[k]===4)sfx2('evo2_'+k)}
     const r=_up.apply(this,arguments);
     const dh=hp-P.hp;
-    if(dh>6){sfx('big');hurtFlash=.28}else if(dh>.05){sfx('hurt');hurtFlash=Math.max(hurtFlash,.18)}
+    if(dh>6){sfx('big');hurtFlash=.28;vib(50)}else if(dh>.05){sfx('hurt');hurtFlash=Math.max(hurtFlash,.18)}
     if(socks>s||cheese>c||melons>m||xp>x0)sfx('pick');
     if(B.length>bl)sfx('shoot');
     if(HR.length>hl)sfx('hair');
@@ -2717,7 +2722,7 @@ addEventListener('keydown',auInit);
     if(CT.length>cl||TW.length>tl)sfx('throw');
     for(const e of E)if(e.ty==='k'&&!AU.sb.has(e)){AU.sb.add(e);sfx2('boss_'+String(e.nm||'kg').toLowerCase(),'boss')}
     if(!sl0&&tm.sl>.9)sfx('slap');
-    if(!ov0&&over)sfx('death');
+    if(!ov0&&over){sfx('death');vib(250)}
     if(!fd0&&finalDefeated)sfx('victory');
     AU.ws=Object.assign({},wp);
     return r;
@@ -2815,7 +2820,7 @@ function soundsUI(){
 }
 (function(){
   const _menu=menu;
-  menu=function(){_menu.apply(this,arguments);btn('🏆  Missioni ('+MISSIONS.filter(m=>SV.ms[m.id]).length+'/'+MISSIONS.length+')',missionsUI);btn('🎵  Suoni personalizzati',soundsUI);btn('ℹ️  Info e privacy',infoUI)};
+  menu=function(){_menu.apply(this,arguments);const saveB=ov.lastChild;ov.removeChild(saveB);btn('🏆  Missioni ('+MISSIONS.filter(m=>SV.ms[m.id]).length+'/'+MISSIONS.length+')',missionsUI);const g=document.createElement('div');g.className='grid2';ov.appendChild(g);saveB.innerHTML='📦 Salvataggi';g.appendChild(saveB);for(const [l,f] of [['⚙️ Opzioni',optionsUI],['🎵 Suoni',soundsUI],['ℹ️ Info e privacy',infoUI]]){btn(l,f);g.appendChild(ov.lastChild)}trNode(ov)};
   const _rdy=rdy;
   rdy=function(k,dt,c){
     const r=_rdy.apply(this,arguments);
@@ -2902,7 +2907,8 @@ function ensureSV(o){
   o.tdmaps=Object.assign({zigzag:1},o.tdmaps&&typeof o.tdmaps==='object'?o.tdmaps:{});
   if(typeof o.tdmap!=='string'||!o.tdmaps[o.tdmap])o.tdmap='zigzag';
   o.opt=Object.assign({mus:1,sfx:1,vib:1,q:'auto',lang:'it'},o.opt&&typeof o.opt==='object'?o.opt:{});
-  o.tut=o.tut?1:0;
+  o.tut=o.tut?1:0;o.tutTd=o.tutTd?1:0;
+  if(o.opt.lang!=='en')o.opt.lang='it';for(const k of ['mus','sfx']){const v=parseFloat(o.opt[k]);o.opt[k]=isFinite(v)?Math.max(0,Math.min(1,v)):1}
   return o;
 }
 const CHARS={
@@ -3596,6 +3602,67 @@ PREP_EXTRA.push(mode=>{
   ov.appendChild(row);ov.appendChild(d);
 });
 
+
+// =====================================================================
+// RIFINITURE: opzioni, vibrazione, tutorial, lingua inglese
+// =====================================================================
+function vib(ms){try{if(SV.opt.vib&&navigator.vibrate)navigator.vibrate(ms)}catch(e){}}
+const EN_DICT=[["Andrea in mutande", "Andrea in Undies"], ["Bonus giornaliero", "Daily bonus"], ["Formaggi:", "Cheese:"], ["Record classico:", "Classic record:"], ["Record ondate:", "Waves record:"], ["Vestiti:", "Clothes:"], ["Limitatore armi rimosso (max 100)", "Weapon limiter removed (max 100)"], ["Classica (sopravvivenza)", "Classic (survival)"], ["Modalità Ondate", "Waves mode"], ["Tower Defense — Difendi la casa", "Tower Defense — Defend the house"], ["📦 Salvataggi", "📦 Saves"], ["🎵 Suoni", "🎵 Sounds"], ["Negozio", "Shop"], ["Salvataggi (export/import)", "Saves (export/import)"], ["Missioni", "Missions"], ["Suoni personalizzati", "Custom sounds"], ["Info e privacy", "Info & privacy"], ["Opzioni", "Options"], ["Indietro", "Back"], ["Chiudi", "Close"], ["Continua", "Continue"], ["Riprova", "Retry"], ["Menu principale", "Main menu"], ["Annulla", "Cancel"], ["Completate:", "Completed:"], ["Premio:", "Reward:"], ["sblocca ", "unlocks "], ["Scegli il personaggio", "Choose your character"], ["Si sblocca nel Negozio", "Unlock in the Shop"], ["Inizia", "Start"], ["Animale", "Pet"], ["Nessuno", "None"], ["Puoi adottare un animale nel Negozio", "You can adopt a pet in the Shop"], ["Mappa", "Map"], ["Si sblocca con la missione:", "Unlocked by the mission:"], ["Percorso (il personaggio scelto aiuta le torri con la sua arma)", "Path (your character helps the towers with their weapon)"], ["Equilibrato. Parte con il 🧦 Calzino.", "Balanced. Starts with the 🧦 Sock."], ["Veloce ma fragile (+20% velocità, -15% vita). Parte con le 💅 Unghie.", "Fast but fragile (+20% speed, -15% health). Starts with 💅 Nails."], ["Impara in fretta (+15% esperienza). Parte con il 👦 boomerang.", "Quick learner (+15% XP). Starts with the 👦 boomerang."], ["Lento ma potente (+25% vita, +15% danni, -10% velocità). Parte con il 🚂 treno.", "Slow but strong (+25% health, +15% damage, -10% speed). Starts with the 🚂 train."], ["Si cura da solo (+0,6 vita al secondo, -15% velocità). Parte con il 🔪 Coltellino.", "Heals himself (+0.6 health per second, -15% speed). Starts with the 🔪 Pocket knife."], ["Nonno", "Grandpa"], ["in uso", "in use"], ["Sblocca ·", "Unlock ·"], ["oppure missione:", "or mission:"], ["Livello massimo", "Max level"], ["Livello", "Level"], ["Scegli un potenziamento", "Choose an upgrade"], ["limite rimosso", "limit removed"], ["Tocca la carta da escludere per questa partita", "Tap the card to remove for this run"], ["Hai già preso tutto!", "You already have everything!"], ["Rilancia", "Reroll"], ["Escludi", "Banish"], ["Salta", "Skip"], ["NUOVO PASSIVO", "NEW PASSIVE"], ["PASSIVO", "PASSIVE"], ["NUOVA", "NEW"], ["COMUNE", "COMMON"], ["RARA", "RARE"], ["EPICA", "EPIC"], ["MITICA", "MYTHIC"], ["LEGGENDARIA · FUSIONE", "LEGENDARY · FUSION"], ["Seconda Evoluzione", "Second Evolution"], ["Evoluzione", "Evolution"], ["Nuova arma", "New weapon"], ["Fusione:", "Fusion:"], ["danni ×1,6", "damage ×1.6"], ["FUSIONE!", "FUSION!"], ["🧦 Calzino lanciato", "🧦 Thrown sock"], ["🧀 Aura puzzolente", "🧀 Stinky aura"], ["🍉 Angurie orbitanti", "🍉 Orbiting watermelons"], ["👦 Christian lanciato (boomerang)", "👦 Thrown Christian (boomerang)"], ["💅 Unghie di Kevin (graffio)", "💅 Kevin's nails (scratch)"], ["🔫 Mitraglietta di peli (rallenta)", "🔫 Hair machine gun (slows)"], ["🚂 Thomas (treno esplosivo)", "🚂 Thomas (explosive train)"], ["🔪 Coltellino del nonno", "🔪 Grandpa's pocket knife"], ["👟 Calcio (scarpa)", "👟 Kick (shoe)"], ["💨 Scatto con scoreggia", "💨 Fart dash"], ["🕸️ Spara-ragnatele", "🕸️ Web shooter"], ["🤖 Drone autonomo", "🤖 Autonomous drone"], ["❄️ Pioggia di forfora", "❄️ Dandruff rain"], ["🦁 Furia del vero leone", "🦁 Fury of the true lion"], ["Fetore immondo", "Foul stench"], ["Graffio mortale", "Deadly scratch"], ["Cappuccino assassino", "Killer cappuccino"], ["Scarpa della gru", "Crane shoe"], ["Grande fungo", "Big mushroom"], ["Peli Gatling", "Gatling hair"], ["Ultima Fermata", "Last Stop"], ["Ruggito dei Leoni", "Lions' Roar"], ["CALZINO APOCALITTICO", "APOCALYPTIC SOCK"], ["PESTE UNIVERSALE", "UNIVERSAL PLAGUE"], ["ANGURIE DIVINE", "DIVINE WATERMELONS"], ["CIROTONDO SUPREMO", "SUPREME CIROTONDO"], ["ARTIGLI DELL’APOCALISSE", "CLAWS OF THE APOCALYPSE"], ["PELI GATLING OMEGA", "OMEGA GATLING HAIR"], ["THOMAS DISTRUTTORE", "THOMAS THE DESTROYER"], ["CAPPUCCINO DELLA MORTE", "CAPPUCCINO OF DEATH"], ["SCARPA DIVINA", "DIVINE SHOE"], ["TELETRASPORTO TOSSICO", "TOXIC TELEPORT"], ["RAGNATELA DIMENSIONALE", "DIMENSIONAL WEB"], ["TEMPESTA GLACIALE", "GLACIAL STORM"], ["RUGGITO SUPREMO", "SUPREME ROAR"], ["CALZINO FORTUNATO", "LUCKY SOCK"], ["FORMAGGIO AL PROFUMO", "PERFUMED CHEESE"], ["ANGURIONE MORBIDO", "SOFT GIANT MELON"], ["ARTIGLI D'ACCIAIO", "STEEL CLAWS"], ["PELI SUPERSONICI", "SUPERSONIC HAIR"], ["SCARPA BLINDATA", "ARMORED SHOE"], ["DRONE GENIO", "GENIUS DRONE"], ["THOMAS MAGNETICO", "MAGNETIC THOMAS"], ["🧴 Deodorante", "🧴 Deodorant"], ["🥬 Spinaci", "🥬 Spinach"], ["🛏️ Cuscino", "🛏️ Pillow"], ["🩴 Ciabatte", "🩴 Slippers"], ["🧲 Calamita tascabile", "🧲 Pocket magnet"], ["🍀 Quadrifoglio", "🍀 Four-leaf clover"], ["🧥 Accappatoio", "🧥 Bathrobe"], ["📚 Libro di scuola", "📚 School book"], ["-7% tempo di ricarica delle armi", "-7% weapon cooldown"], ["+12% vita massima e +0,25 vita al secondo", "+12% max health and +0.25 health per second"], ["+25% raggio di raccolta", "+25% pickup range"], ["+4% colpi critici (danni ×2) e più oggetti", "+4% critical hits (×2 damage) and more items"], ["-7% danni subiti", "-7% damage taken"], ["+10% esperienza", "+10% XP"], ["+10% danni", "+10% damage"], ["+8% velocità", "+8% speed"], ["Potenziamenti", "Upgrades"], ["Personaggi", "Characters"], ["Animali", "Pets"], ["liv.", "lv."], ["Vita massima all’inizio di ogni partita", "Max health at the start of each run"], ["Danni di tutte le armi", "Damage of all weapons"], ["Velocità di movimento", "Movement speed"], ["+2% critici e più formaggi e angurie", "+2% crits and more cheese and watermelons"], ["Sali di livello più in fretta", "Level up faster"], ["Più formaggi a fine partita", "More cheese at the end of a run"], ["Cambia le carte del level-up", "Change the level-up cards"], ["Togli una carta per tutta la partita", "Remove a card for the whole run"], ["Al level-up le carte diventano 4", "Level-up shows 4 cards"], ["❤️ Vita +10%", "❤️ Health +10%"], ["⚔️ Danni +10%", "⚔️ Damage +10%"], ["👟 Velocità +5%", "👟 Speed +5%"], ["🍀 Fortuna", "🍀 Luck"], ["📚 Esperienza +5%", "📚 XP +5%"], ["💰 Avidità +10%", "💰 Greed +10%"], ["🎲 Rilanci +1", "🎲 Rerolls +1"], ["❌ Esclusioni +1", "❌ Banishes +1"], ["🃏 Quarta scelta", "🃏 Fourth choice"], ["Calamita (attrazione drop)", "Magnet (attracts drops)"], ["ATTIVA", "ACTIVE"], ["Adotta ·", "Adopt ·"], ["con te", "with you"], ["Tocca per lasciarlo a casa", "Tap to leave it at home"], ["Tocca per portarlo con te", "Tap to take it with you"], ["Allena ", "Train "], ["Aura di 🧀 formaggio che morde i nemici e ti porta i formaggi lontani.", "A 🧀 cheese aura that bites enemies and brings you distant cheese."], ["Graffia i nemici vicini, come le 💅 Unghie.", "Scratches nearby enemies, like the 💅 Nails."], ["Vola intorno a te e lancia 🧦 calzini.", "Flies around you throwing 🧦 socks."], ["Blocca i nemici nelle 🕸️ ragnatele.", "Traps enemies in 🕸️ webs."], ["Ti cura piano piano e ti rende più veloce.", "Slowly heals you and makes you faster."], ["Più esperienza e più danni per tutta la partita.", "More XP and more damage for the whole run."], ["(Topo)", "(Mouse)"], ["(Gatto)", "(Cat)"], ["(Pipistrello)", "(Bat)"], ["(Ragno)", "(Spider)"], ["(Rana)", "(Frog)"], ["(Gufo)", "(Owl)"], ["Cantina", "Cellar"], ["La cantina di sempre.", "The good old cellar."], ["Giardino di notte", "Garden at night"], ["Nemici più veloci (+15%), il doppio delle angurie.", "Faster enemies (+15%), twice the watermelons."], ["Cucina", "Kitchen"], ["Nemici più resistenti (+25% vita), formaggi doppi.", "Tougher enemies (+25% health), double cheese."], ["la mappa ", "the map "], ["il percorso ", "the path "], ["Il percorso classico.", "The classic path."], ["Serpente", "Snake"], ["Scorciatoia", "Shortcut"], ["Strada lunghissima: più tempo per colpire, ma servono più torri.", "Very long road: more time to hit, but you need more towers."], ["Strada cortissima e pericolosa, ma calzini ×1,5.", "Very short and dangerous road, but socks ×1.5."], ["Sconfiggi 500 nemici", "Defeat 500 enemies"], ["Sconfiggi 5.000 nemici", "Defeat 5,000 enemies"], ["Sopravvivi 5 minuti in Classica", "Survive 5 minutes in Classic"], ["Sopravvivi 15 minuti in Classica", "Survive 15 minutes in Classic"], ["Sconfiggi ORU", "Defeat ORU"], ["Raggiungi il livello 20 in una partita", "Reach level 20 in one run"], ["Sconfiggi Xavlegbagaskanius", "Defeat Xavlegbagaskanius"], ["Gioca 10 partite", "Play 10 runs"], ["Porta un’arma a livello MITICO", "Bring a weapon to MYTHIC level"], ["Crea una Fusione", "Create a Fusion"], ["Supera l’ondata 10 (Ondate)", "Clear wave 10 (Waves)"], ["Supera l’ondata 25 (Ondate)", "Clear wave 25 (Waves)"], ["Supera l’ondata 10 nel Tower Defense", "Clear wave 10 in Tower Defense"], ["Supera l’ondata 20 nel Tower Defense", "Clear wave 20 in Tower Defense"], ["Apri 10 forzieri", "Open 10 chests"], ["Sconfiggi 25 nemici élite", "Defeat 25 elite enemies"], ["Adotta un animale", "Adopt a pet"], ["Completa il set di vestiti", "Complete the clothes set"], ["Vinci la Classica (30 minuti)", "Win Classic (30 minutes)"], ["Pausa", "Pause"], ["Riprendi", "Resume"], ["Termina partita", "End run"], ["Modalità Classica", "Classic mode"], ["Ondata", "Wave"], ["Ondate", "Waves"], ["Casa", "House"], ["Torri", "Towers"], ["Liv.", "Lv."], ["COSTRUISCI", "BUILD"], ["FASE DI COSTRUZIONE", "BUILD PHASE"], ["Piazza o potenzia le torri", "Place or upgrade towers"], ["in arrivo", "incoming"], ["ONDATA", "WAVE"], ["SUPERATA!", "CLEARED!"], ["BUILD TIME", "BUILD TIME"], ["ok", "ok"], ["La casa di ", "The house of "], [" è stata distrutta!", " was destroyed!"], [" è stato sopraffatto!", " was overwhelmed!"], ["Ondata raggiunta:", "Wave reached:"], ["Casa caduta", "House fallen"], ["Banca formaggi:", "Cheese bank:"], ["Rivivi (una volta per partita)", "Revive (once per run)"], ["Rivivi (guarda un video)", "Revive (watch a video)"], ["Caricamento video…", "Loading video…"], [" si rialza…", " gets back up…"], ["Difendi la tua casa!", "Defend your house!"], ["Vittoria!", "Victory!"], [" è sopravvissuto ", " survived "], ["30 minuti", "30 minutes"], ["Puoi continuare all’infinito per battere il tuo record.", "You can keep going forever to beat your record."], ["Continua (modalità infinita)", "Continue (endless mode)"], ["Termina e torna al menu", "End and return to menu"], ["Mercatino", "Market"], [" superata! Hai ", " cleared! You have "], [" calzini", " socks"], ["Cura completa", "Full heal"], ["Potenzia un’arma a caso", "Upgrade a random weapon"], ["+10% danni per questa partita", "+10% damage for this run"], ["+1 Rilancio", "+1 Reroll"], ["Level-up subito", "Instant level-up"], ["Prossima ondata", "Next wave"], ["NEMICO ÉLITE!", "ELITE ENEMY!"], ["ÉLITE", "ELITE"], ["FORZIERE:", "CHEST:"], ["FORZIERE!", "CHEST!"], ["MINI-BOSS! Potenza", "MINI-BOSS! Power"], ["LIMITATORE RIMOSSO! Liv. armi → 100", "LIMITER REMOVED! Weapon lv. → 100"], ["PANTALONI DI TOZZO!", "TOZZO'S TROUSERS!"], ["MAGLIETTA PORTAFORTUNA!", "LUCKY T-SHIRT!"], ["SIDE QUEST: PANTALONI COMPLETATA!", "SIDE QUEST: TROUSERS COMPLETE!"], ["SIDE QUEST: MAGLIETTA PORTAFORTUNA!", "SIDE QUEST: LUCKY T-SHIRT!"], ["CAPPELLO OTTENUTO!", "HAT OBTAINED!"], ["CAPPELLO!", "HAT!"], ["CALZINI SBLOCCATI!", "SOCKS UNLOCKED!"], ["SET COMPLETO! +50% STATS", "FULL SET! +50% STATS"], ["SCHIAFFO DI PIERGIORGIO!", "PIERGIORGIO'S SLAP!"], ["POMODORO DORATO", "GOLDEN TOMATO"], ["LA BESTIA", "THE BEAST"], ["CASA DI ", "HOUSE OF "], [" sale di livello! ", " levels up! "], ["+20 calzini · +10 formaggi · +3 angurie", "+20 socks · +10 cheese · +3 watermelons"], ["Lancio singolo", "Single throw"], ["Aura + slow", "Aura + slow"], ["Orbite", "Orbits"], ["Graffio vicino", "Close scratch"], ["Raffica + slow", "Burst + slow"], ["Colpo forte", "Heavy hit"], ["Mira auto", "Auto aim"], ["Esplosione area", "Area blast"], ["Danno", "Damage"], ["Calzini insufficienti", "Not enough socks"], ["Specializza:", "Specialize:"], ["Potenza (+50% danni)", "Power (+50% damage)"], ["Precisione (+30% raggio, rallenta)", "Precision (+30% range, slows)"], ["Potenza", "Power"], ["Precisione", "Precision"], ["Bersaglio:", "Target:"], ["il più avanti", "the furthest"], ["il più forte", "the strongest"], ["il più vicino", "the nearest"], ["(tocca per cambiare)", "(tap to change)"], ["Vendi", "Sell"], ["🧦 Calzino", "🧦 Sock"], ["🧀 Formaggio", "🧀 Cheese"], ["🍉 Anguria", "🍉 Watermelon"], ["💅 Unghie", "💅 Nails"], ["🔫 Peli", "🔫 Hair"], ["👟 Scarpa", "👟 Shoe"], ["Sistema Salvataggi", "Save system"], ["Esporta i progressi per conservarli in una email/note, oppure importa un codice salvato.", "Export your progress to keep it in an email/notes, or import a saved code."], ["Copia codice", "Copy code"], ["Invia via Email", "Send by email"], ["Incolla / Carica salvataggio", "Paste / Load save"], ["Copiato!", "Copied!"], ["Incolla il codice in una email o nelle note.", "Paste the code in an email or in your notes."], ["Copia manuale", "Manual copy"], ["Seleziona il testo nella casella e copialo (Ctrl/Cmd+C).", "Select the text in the box and copy it (Ctrl/Cmd+C)."], ["Email aperta", "Email opened"], ["Se non si è aperta, copia il codice e invialo manualmente.", "If it didn't open, copy the code and send it manually."], ["Importa salvataggio", "Import save"], ["Incolla il codice completo nella casella qui sotto", "Paste the full code in the box below"], ["Carica", "Load"], ["Casella vuota", "Empty box"], ["Salvataggio caricato!", "Save loaded!"], ["Codice non valido", "Invalid code"], ["Controlla di aver copiato tutto il testo del salvataggio.", "Make sure you copied the whole save text."], ["I progressi e i suoni che carichi restano solo su questo dispositivo. ", "Your progress and the sounds you load stay only on this device. "], ["Il gioco non raccoglie dati personali e non ha account.", "The game collects no personal data and has no accounts."], ["Font: Lilita One (SIL Open Font License).", "Font: Lilita One (SIL Open Font License)."], ["Gestisci consenso pubblicità", "Manage ad consent"], ["I video facoltativi per rinascere sono forniti da Google AdMob, che può usare identificatori del dispositivo secondo le tue scelte di consenso.", "Optional revive videos are provided by Google AdMob, which may use device identifiers according to your consent choices."], ["Carica tutti i file insieme", "Load all files at once"], ["file caricati", "files loaded"], ["Musica", "Music"], ["Effetti sonori", "Sound effects"], ["Vibrazione", "Vibration"], ["Grafica", "Graphics"], ["Lingua", "Language"], ["Automatica", "Automatic"], ["Alta", "High"], ["Bassa", "Low"], ["Attiva", "On"], ["Spenta", "Off"], ["non disponibile su questo dispositivo", "not available on this device"], ["Rivedi il tutorial", "Replay the tutorial"], ["Il tutorial verrà mostrato alla prossima partita.", "The tutorial will show at your next run."], ["Come si gioca", "How to play"], ["Avanti", "Next"], ["Gioca!", "Play!"], ["Trascina il dito sullo schermo (o usa WASD / le frecce) per muoverti.", "Drag your finger on the screen (or use WASD / arrow keys) to move."], ["Le armi attaccano da sole: tu pensa solo a schivare!", "Weapons attack on their own: you just focus on dodging!"], ["Raccogli i calzini per salire di livello e scegliere un potenziamento.", "Collect socks to level up and choose an upgrade."], ["I formaggi 🧀 restano dopo la partita: spendili nel Negozio per diventare più forte.", "Cheese 🧀 stays after the run: spend it in the Shop to get stronger."], ["Tocca un’icona in basso, poi una piazzola ＋ per costruire una torre.", "Tap an icon at the bottom, then a ＋ spot to build a tower."], ["Tocca una torre per potenziarla, cambiarne il bersaglio o venderla.", "Tap a tower to upgrade it, change its target or sell it."], ["Trascina il dito per muovere il tuo personaggio: aiuta le torri con la sua arma.", "Drag your finger to move your character: they help the towers with their weapon."], ["Muovi con il dito o WASD", "Move with your finger or WASD"]];
+let TRX=null;
+function tr(s){
+  if(typeof s!=='string'||SV.opt.lang!=='en')return s;
+  if(!TRX){const keys=EN_DICT.slice().sort((a,b)=>b[0].length-a[0].length);TRX={re:new RegExp(keys.map(k=>k[0].replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'),'g'),map:new Map(keys)}}
+  return s.replace(TRX.re,m=>TRX.map.get(m));
+}
+// testi dell'interfaccia (HTML): tradotti appena compaiono
+function trNode(root){
+  if(SV.opt.lang!=='en')return;
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
+  while((n=w.nextNode())){const v=tr(n.data);if(v!==n.data)n.data=v}
+}
+new MutationObserver(ms=>{if(SV.opt.lang!=='en')return;for(const m of ms){if(m.type==='characterData')trNode(m.target.parentNode||m.target);else for(const a of m.addedNodes)trNode(a.nodeType===3?a.parentNode||a:a)}})
+  .observe(document.body,{childList:true,subtree:true,characterData:true});
+(function(){const _fd=floatDmg;floatDmg=function(x,y,txt,col){return _fd(x,y,typeof txt==='string'?tr(txt):txt,col)}})();
+function applyLang(){document.documentElement.lang=SV.opt.lang==='en'?'en':'it';trNode(document.body)}
+function applyVolumes(){if(!AU.ctx)return;AU.mg.gain.value=.16*SV.opt.mus;AU.sg.gain.value=.55*SV.opt.sfx;AU.cg.gain.value=.9*SV.opt.sfx}
+function optionsUI(){
+  ov.innerHTML='<h2>⚙️ Opzioni</h2>';
+  const box=document.createElement('div');box.style.cssText='width:min(360px,94%);display:flex;flex-direction:column;gap:12px;text-align:left';
+  const row=(label,el)=>{const d=document.createElement('div');d.style.cssText='background:rgba(20,12,34,.72);border:2px solid rgba(255,255,255,.08);border-radius:12px;padding:8px 12px';const l=document.createElement('div');l.style.cssText='font-family:var(--display);font-size:16px;margin-bottom:6px';l.textContent=label;d.appendChild(l);d.appendChild(el);box.appendChild(d)};
+  const slider=(k)=>{const i=document.createElement('input');i.type='range';i.min=0;i.max=100;i.value=Math.round(SV.opt[k]*100);i.style.cssText='width:100%;accent-color:#ffd23f';i.oninput=()=>{SV.opt[k]=i.value/100;applyVolumes()};i.onchange=()=>{sv();if(k==='sfx'){auInit();sfx('pick')}};return i};
+  const choice=(k,opts)=>{const d=document.createElement('div');d.style.cssText='display:flex;gap:6px;flex-wrap:wrap';for(const [v,l] of opts){const b=document.createElement('button');b.className='b';b.style.cssText='width:auto;flex:1;padding:6px 8px;font-size:14px;text-align:center'+(SV.opt[k]===v?';background:linear-gradient(180deg,#ffcf4a,#ff8a1c);color:#3a1a00;text-shadow:none':'');b.textContent=l;b.onclick=()=>{sfx('click');SV.opt[k]=v;sv();if(k==='lang')applyLang();optionsUI()};d.appendChild(b)}return d};
+  row('🎵 Musica',slider('mus'));
+  row('🔊 Effetti sonori',slider('sfx'));
+  const vibOk=!!navigator.vibrate;
+  const vd=choice('vib',[[1,'Attiva'],[0,'Spenta']]);if(!vibOk){const n=document.createElement('small');n.style.opacity=.7;n.textContent='(non disponibile su questo dispositivo)';vd.appendChild(n)}
+  row('📳 Vibrazione',vd);
+  row('✨ Grafica',choice('q',[['auto','Automatica'],['high','Alta'],['low','Bassa']]));
+  row('🌍 Lingua',choice('lang',[['it','🇮🇹 Italiano'],['en','🇬🇧 English']]));
+  ov.appendChild(box);
+  btn('🎓 Rivedi il tutorial',()=>{SV.tut=0;SV.tutTd=0;sv();ov.querySelector('h2').textContent=tr('Il tutorial verrà mostrato alla prossima partita.')});
+  btn('⬅ Indietro',menu,'primary');
+  ov.style.display='flex';
+}
+const TUT={
+  run:['👆 Trascina il dito sullo schermo (o usa WASD / le frecce) per muoverti.','⚔️ Le armi attaccano da sole: tu pensa solo a schivare!','⭐ Raccogli i calzini per salire di livello e scegliere un potenziamento.','🧀 I formaggi 🧀 restano dopo la partita: spendili nel Negozio per diventare più forte.'],
+  td:['🏰 Tocca un’icona in basso, poi una piazzola ＋ per costruire una torre.','⬆ Tocca una torre per potenziarla, cambiarne il bersaglio o venderla.','👆 Trascina il dito per muovere il tuo personaggio: aiuta le torri con la sua arma.'],
+};
+function showTutorial(kind,i=0){
+  const list=TUT[kind];paused=true;joy=null;
+  if(kind==='td'){const b=document.getElementById('tdbar');if(b)b.style.display='none'}
+  ov.innerHTML='<h2>🎓 Come si gioca</h2><p style="font-size:13px;opacity:.7">'+(i+1)+' / '+list.length+'</p><p style="font-size:18px;max-width:340px;line-height:1.5">'+list[i]+'</p>';
+  if(i<list.length-1)btn('Avanti ▶',()=>showTutorial(kind,i+1),'primary');
+  else btn('Gioca! ▶',()=>{if(kind==='td')SV.tutTd=1;else SV.tut=1;sv();ov.style.display='none';paused=false;if(gameMode==='td')showTdBar()},'primary');
+  ov.style.display='flex';
+}
+(function(){
+  const _sr=startRun;
+  startRun=function(mode){
+    const r=_sr.apply(this,arguments);
+    if(gameMode==='td'?!SV.tutTd:!SV.tut)showTutorial(gameMode==='td'?'td':'run');
+    return r;
+  };
+})();
 // Pausa automatica quando l'app/scheda va in background (telefonata, cambio app, blocco schermo)
 function inRunUnpaused(){return !paused&&!over&&ov.style.display==='none'}
 function onBackground(){
@@ -3614,6 +3681,7 @@ try{const App=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugi
   if(App)App.addListener('appStateChange',s=>{s.isActive?onForeground():onBackground()})}catch(e){}
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{})}catch(e){}
 
+applyLang();
 menu();
 restoreNativeSave();
 Ads.init();

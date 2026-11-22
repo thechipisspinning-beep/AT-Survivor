@@ -1,7 +1,19 @@
 # Andrea in mutande
 
-Roguelike "survivor" in un unico file HTML (`index.html`): modalità Classica, Ondate e Tower Defense.
-Si gioca aprendo `index.html` nel browser; funziona anche offline (il font è incluso nel file).
+Roguelike "survivor" in un unico file HTML (`index.html`). Si gioca aprendo `index.html` nel browser
+e funziona anche offline (il font è incluso nel file). Testi in italiano e in inglese (Menu → Opzioni → Lingua).
+
+## Contenuti
+- **Modalità:** Classica (vittoria a 30 minuti, poi infinita), Ondate (mercatino ogni 3 ondate),
+  Tower Defense (3 percorsi, il personaggio aiuta le torri, velocità x2, bersagli e specializzazioni).
+- **5 personaggi:** Andrea, Kevin, Christian, Thomas, Nonno, ognuno con arma iniziale e statistiche proprie.
+- **14 armi** con due evoluzioni, **8 oggetti passivi**, **8 Fusioni** (arma Lv.5 + passivo).
+- **Level-up** con Rilancia, Escludi e Salta.
+- **6 animali compagni** (topo, gatto, pipistrello, ragno, rana, gufo) da adottare e allenare.
+- **Nemici:** 3 nuovi tipi (lumaca che sputa, fungo che esplode, melma che si divide), élite con forziere, 5 boss.
+- **3 mappe:** Cantina, Giardino di notte, Cucina.
+- **Negozio** con 10 potenziamenti permanenti, **19 missioni** con premi e sblocchi.
+- Tutorial alla prima partita, menu Opzioni (volumi, vibrazione, qualità grafica, lingua).
 
 ## Pronto per l'app (Capacitor)
 Il gioco riconosce da solo se gira dentro un'app Capacitor e usa questi plugin, se installati:
