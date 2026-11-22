@@ -1,4 +1,4 @@
-# Informativa sulla privacy — AT in mutande
+# Informativa sulla privacy — Andrea in mutande
 
 _Ultimo aggiornamento: 22 novembre 2026_
 
@@ -23,6 +23,6 @@ Puoi cancellare tutti i dati del gioco disinstallando l'app o cancellandone i da
 
 ---
 
-# Privacy Policy — AT in mutande (English summary)
+# Privacy Policy — Andrea in mutande (English summary)
 
 Game progress, audio settings and any custom sounds you load are stored only on your device and are never sent to the developer. The game has no accounts and no analytics. In the mobile app, optional rewarded videos are served by Google AdMob, which may collect device identifiers, IP address and ad-interaction data; consent is requested where required (EEA/UK) and can be changed under Menu → Info e privacy. Contact: [CONTACT EMAIL].

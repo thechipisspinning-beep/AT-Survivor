@@ -1,4 +1,4 @@
-# AT in mutande
+# Andrea in mutande
 
 Roguelike "survivor" in un unico file HTML (`index.html`): modalità Classica, Ondate e Tower Defense.
 Si gioca aprendo `index.html` nel browser; funziona anche offline (il font è incluso nel file).
